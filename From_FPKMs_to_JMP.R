@@ -1,4 +1,4 @@
-#setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/CBFA_FTO_InOlineo_ForMagnus/PART1_TOJMP/")
+setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/CBFA_FTO_InOlineo_ForMagnus/PART1_TOJMP/")
 #Load libraries:
 library(ggplot2)
 library(gtable)
@@ -71,7 +71,7 @@ FPKM_to_TPM <- function(TheFilename){
 #Look for the files in your FPKM Directory and remove the .txt (Change .txt if you have under another extension)
 MyFPKMsNames<-list.files(path = MyFPKMDirectory)
 #Runs the FPKMtoTPM on all the files present in your FPKM Directory
-#lapply(MyFPKMsNames,FPKM_to_TPM)
+lapply(MyFPKMsNames,FPKM_to_TPM)
 
 print("The outputs are TPM txt files in the ./TPMs folder")
 print("1. FROM FPKM TO TPM: All Done")
@@ -392,18 +392,18 @@ ExperimentalDesignFile<-function (TheComparison,Conditions) {
       #Create the frame
       ExpDsgn<- data.frame(matrix(ncol=3,nrow=NSamples))
       #Name the columns
-      colnames(ExpDsgn)<-c("Array","ColumnNames","Condition")
+      colnames(ExpDsgn)<-c("Array","ColumnName","Condition")
       #Index the Array column
       ExpDsgn$Array<-c(1:NSamples)
       
       #Put the name of the column in the file   
       SampleNames<-colnames(MergedTPM[,3:length(MergedTPM)])
-      ExpDsgn$ColumnNames<-SampleNames
+      ExpDsgn$ColumnName<-SampleNames
 
       #Isolate which condition each column belongs to
       for(rowloop in 1:NSamples){
             #Figure which index of the Conditions is part of the name
-            index<-which(sapply(Conditions,function (y) sapply (ExpDsgn[rowloop,"ColumnNames"], function (x) grepl(y,x))))       
+            index<-which(sapply(Conditions,function (y) sapply (ExpDsgn[rowloop,"ColumnName"], function (x) grepl(y,x))))       
             #Put the corresponding Condition as "Condition" (==genotype)
             ExpDsgn[rowloop,"Condition"]<-Conditions[index]
       }
