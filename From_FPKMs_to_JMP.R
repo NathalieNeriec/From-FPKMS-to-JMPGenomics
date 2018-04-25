@@ -1,5 +1,4 @@
-#####NOTE IN THIS ONE YOU NEED TO HAVE MERGED DATA >> MAKE A FUNCTION MERGEDATA FROM AYMAN S CODE
-setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/CBFA_FTO_InOlineo_ForMagnus/PART1_TOJMP/")
+#setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/CBFA_FTO_InOlineo_ForMagnus/PART1_TOJMP/")
 #Load libraries:
 library(ggplot2)
 library(gtable)
@@ -16,13 +15,24 @@ library(xlsx)
 ######### USER DEFINED #####################################################################
 ############################################################################################
 #Your files need to have a name that contains your comparisons "Olineo" "OlineoFTO" etc
-# Directory where the FPKMs ARE
-MyFPKMDirectory<-"./1_FPKMS/"
-
-Comparisons<-c("OlineoFTO","OlineohnRNPAB")
-
-Conditions <- c("OlineoFTOCtrol", "OlineoFTOsiRNA",
-                "OlineohnRNPABsiRNA","OlineohnRNPABCtrol")
+        
+        # Directory where the FPKMs ARE
+        MyFPKMDirectory<-"./1_FPKMS/"
+        
+        #The Comparisons you want to make. The "name" should be contained AS IS in ALL the files 
+        #you want to compare
+        Comparisons<-c("OlineoFTO","OlineohnRNPAB")
+        
+        #The different conditions. Can contain more than comparison. Will only look at the conditions
+        #that contains the comparison within, without the Rep
+        #Example: If you want to compare "Cancercell_condition1 
+        #(Cancercell_condition1_rep1,Cancercell_condition1_rep2, Cancercell_condition1_rep3)
+        #and Cancercell_condition2 and Cancercell_condition3"etc etc
+        #Your comparison should be "Cancercell" and in condition you should have
+        #Cancercell_condition1, Cancercell_condition2, Cancercell_conditon3
+        
+        Conditions <- c("OlineoFTOCtrol", "OlineoFTOsiRNA",
+                    "OlineohnRNPABsiRNA","OlineohnRNPABCtrol")
 
 ############################################################################################
 ### 1. FROM FPKM TO TPM#####################################################################
@@ -61,7 +71,7 @@ FPKM_to_TPM <- function(TheFilename){
 #Look for the files in your FPKM Directory and remove the .txt (Change .txt if you have under another extension)
 MyFPKMsNames<-list.files(path = MyFPKMDirectory)
 #Runs the FPKMtoTPM on all the files present in your FPKM Directory
-lapply(MyFPKMsNames,FPKM_to_TPM)
+#lapply(MyFPKMsNames,FPKM_to_TPM)
 
 print("The outputs are TPM txt files in the ./TPMs folder")
 print("1. FROM FPKM TO TPM: All Done")
@@ -157,8 +167,6 @@ print("The outputs are dataframe Named TheComparison_MergedTransformed")
 #THREE PARTS
     #1. Add average columns
     #2. Plots
-Conditions <- c("OlineoFTOCtrol", "OlineoFTOsiRNA",
-                "OlineohnRNPABsiRNA","OlineohnRNPABsiRNA")
 
 #1. Add average columns
      #FUNCTION
@@ -352,14 +360,16 @@ for(TheComparison in Comparisons){
   #ONOFF Save as a dataframe and an excel file
   MergedTPM_ONOFF<-as.data.frame(Templist[1])
   colnames(MergedTPM_ONOFF)<-gsub("MergedTPM_ONOFF."," ",colnames(MergedTPM_ONOFF))
+  MergedTPM_ONOFF<-MergedTPM_ONOFF
   write.xlsx(MergedTPM_ONOFF,paste0("./3_ONOFF/",TheComparison,"_ONOFF.xlsx"),row.names = FALSE)
   assign(paste0(TheComparison,"_ONOFF"),MergedTPM_ONOFF)
 
   #Expressed Save as a dataframe and an excel file
-  MergedTPM_Expressed<-as.data.frame(Templist[1])
-  colnames(MergedTPM_Expressed)<-gsub("MergedTPM_Expressed."," ",colnames(MergedTPM_Expressed))
+  MergedTPM_Expressed<-as.data.frame(Templist[2])
+  colnames(MergedTPM_Expressed)<-gsub("MergedTPM_Expressed.","",colnames(MergedTPM_Expressed))
+  MergedTPM_Expressed<-MergedTPM_Expressed
   write.xlsx(MergedTPM_Expressed,paste0("./3_Expressed/",TheComparison,"_Expressed.xlsx"),row.names = FALSE)
-  assign(paste0(TheComparison,"_Expressed"),MergedTPM_ONOFF)
+  assign(paste0(TheComparison,"_Expressed"),MergedTPM_Expressed)
   
 }
 
@@ -368,17 +378,45 @@ print("5. FILTERING: All Done")
 print("Outputs are two dataframes per comparison : TheComparison_ONOFF and TheComparison_Expressed")
 
 ############################################################################################
-### 6. ExperimentalDesignFile   ############################################################
+### 6. Generate Experimental Design File   #################################################
 ############################################################################################   
 
+myexpressedirectory<-c("./3_Expressed/")
 
-So we have TheComparison_Expressed 
-We want a file that has one column label
-1	TPMOlineoFTOCtrolFPKMS_1	control
-2	TPMOlineoFTOCtrolFPKMS_2	control
-3	TPMOlineoFTOCtrolFPKMS_3	control
-4	TPMOlineoFTOCtrolFPKMS_4	control
-5	TPMOlineoFTOsiRNAFPKMS_1	FTOshRNA
-6	TPMOlineoFTOsiRNAFPKMS_2	FTOshRNA
-7	TPMOlineoFTOsiRNAFPKMS_3	FTOshRNA
-8	TPMOlineoFTOsiRNAFPKMS_4	FTOshRNA
+#FUNCTION
+ExperimentalDesignFile<-function (TheComparison,Conditions) {
+      #Get the file we want to make an Exp Design FIle for 
+      MergedTPM <-get(paste0(TheComparison,"_Expressed"))
+      #Get the number of Sample
+      NSamples<-ncol(MergedTPM)-2
+      #Create the frame
+      ExpDsgn<- data.frame(matrix(ncol=3,nrow=NSamples))
+      #Name the columns
+      colnames(ExpDsgn)<-c("Array","ColumnNames","Condition")
+      #Index the Array column
+      ExpDsgn$Array<-c(1:NSamples)
+      
+      #Put the name of the column in the file   
+      SampleNames<-colnames(MergedTPM[,3:length(MergedTPM)])
+      ExpDsgn$ColumnNames<-SampleNames
+
+      #Isolate which condition each column belongs to
+      for(rowloop in 1:NSamples){
+            #Figure which index of the Conditions is part of the name
+            index<-which(sapply(Conditions,function (y) sapply (ExpDsgn[rowloop,"ColumnNames"], function (x) grepl(y,x))))       
+            #Put the corresponding Condition as "Condition" (==genotype)
+            ExpDsgn[rowloop,"Condition"]<-Conditions[index]
+      }
+      
+      #Return
+      write.xlsx(ExpDsgn,paste0(myexpressedirectory,TheComparison,"_ExpDsgn.xlsx"))
+}
+
+#Loop through the Comparison
+for (TheComparison in Comparisons){
+  ExperimentalDesignFile(TheComparison, Conditions)
+}
+
+
+print("6. Generate Experimental Design File : All Done ")
+print("Outputs are xlsx with _ExpDesign within the Expressed Folder.")
