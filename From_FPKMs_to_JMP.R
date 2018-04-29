@@ -1,4 +1,4 @@
-setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/CBFA_FTO_InOlineo_ForMagnus/PART1_TOJMP/")
+setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/Mefs_AND_OlineoAB/PART1_TOJMP/")
 #Load libraries:
 library(ggplot2)
 library(gtable)
@@ -14,6 +14,8 @@ library(xlsx)
 ############################################################################################
 ######### USER DEFINED #####################################################################
 ############################################################################################
+
+##### ATTENTION : NEED TO BRING THE Rdas FOLDER INTO THE WORKING DIRECTORY########
 #Your files need to have a name that contains your comparisons "Olineo" "OlineoFTO" etc
         
         # Directory where the FPKMs ARE
@@ -21,7 +23,7 @@ library(xlsx)
         
         #The Comparisons you want to make. The "name" should be contained AS IS in ALL the files 
         #you want to compare
-        Comparisons<-c("OlineoFTO","OlineohnRNPAB")
+        Comparisons<-c("MEFs","Olineo","CBFA")
         
         #The different conditions. Can contain more than comparison. Will only look at the conditions
         #that contains the comparison within, without the Rep
@@ -31,8 +33,8 @@ library(xlsx)
         #Your comparison should be "Cancercell" and in condition you should have
         #Cancercell_condition1, Cancercell_condition2, Cancercell_conditon3
         
-        Conditions <- c("OlineoFTOCtrol", "OlineoFTOsiRNA",
-                    "OlineohnRNPABsiRNA","OlineohnRNPABCtrol")
+        Conditions <- c("MEFs_CBFA_kno", "MEFs_CBFA_het",
+                    "Olineo_CBFA_ctrol","Olineo_CBFA_siRNA")
 
 ############################################################################################
 ### 1. FROM FPKM TO TPM#####################################################################
