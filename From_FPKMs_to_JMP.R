@@ -1,4 +1,4 @@
-setwd("X:/LAB_MEMBERSstorageplace/NATHALIE_Analyses/Mefs_AND_OlineoAB/PART1_TOJMP/")
+
 #Load libraries:
 library(ggplot2)
 library(gtable)
@@ -12,29 +12,32 @@ library(parallel)
 library(xlsx)
 
 ############################################################################################
-######### USER DEFINED #####################################################################
+####### USER DEFINED #######################################################################
 ############################################################################################
 
-##### ATTENTION : NEED TO BRING THE Rdas FOLDER INTO THE WORKING DIRECTORY########
+####### ATTENTION : NEED TO BRING THE Rdas FOLDER INTO THE WORKING DIRECTORY########
 #Your files need to have a name that contains your comparisons "Olineo" "OlineoFTO" etc
         
-        # Directory where the FPKMs ARE
-        MyFPKMDirectory<-"./1_FPKMS/"
+# Directory where the FPKMs ARE
+MyFPKMDirectory<-"./OriginalFPKMS/"
         
-        #The Comparisons you want to make. The "name" should be contained AS IS in ALL the files 
-        #you want to compare
-        Comparisons<-c("MEFs","Olineo","CBFA")
+#The Comparisons you want to make. The "name" should be contained AS IS in ALL the files 
+#you want to compare
+Comparisons<-c("HepG2",
+               "K562AB")
         
-        #The different conditions. Can contain more than comparison. Will only look at the conditions
-        #that contains the comparison within, without the Rep
-        #Example: If you want to compare "Cancercell_condition1 
-        #(Cancercell_condition1_rep1,Cancercell_condition1_rep2, Cancercell_condition1_rep3)
-        #and Cancercell_condition2 and Cancercell_condition3"etc etc
-        #Your comparison should be "Cancercell" and in condition you should have
-        #Cancercell_condition1, Cancercell_condition2, Cancercell_conditon3
+
+#The different conditions. Can contain more than comparison. Will only look at the conditions
+#that contains the comparison within, without the Rep
+#Example: If you want to compare "Cancercell_condition1 
+#(Cancercell_condition1_rep1,Cancercell_condition1_rep2, Cancercell_condition1_rep3)
+#and Cancercell_condition2 and Cancercell_condition3"etc etc
+#Your comparison should be "Cancercell" and in condition you should have
+#Cancercell_condition1, Cancercell_condition2, Cancercell_conditon3
         
-        Conditions <- c("MEFs_CBFA_kno", "MEFs_CBFA_het",
-                    "Olineo_CBFA_ctrol","Olineo_CBFA_siRNA")
+Conditions <- c("HepG2ABCtrol", "HepG2ABsiRNA",
+                "K562ABCtrol", "K562ABsiRNA")
+        
 
 ############################################################################################
 ### 1. FROM FPKM TO TPM#####################################################################
@@ -45,13 +48,13 @@ dir.create(MyTPMDirectory)
 
 #FUNCTION FPKM_to_TPM
 FPKM_to_TPM <- function(TheFilename){
-  # TPM = FPKM / (Sum(FPKM)/10^6)
+  #TPM = FPKM / (Sum(FPKM)/10^6)
   #Getfrom the FPKM file   
   OrigDat<-read.table(paste0(MyFPKMDirectory, TheFilename),
                       header=TRUE)
   #EXTRACT FPKM info
   FPKMExtract <- data.frame(OrigDat$gene_id,OrigDat$FPKM)
-  # CALCULATE SUM(FPKM)
+  #CALCULATE SUM(FPKM)
   Total_FPKMS<- sum(FPKMExtract$OrigDat.FPKM)
   #Divide Total FPKM by 10^6 (so dont have to multiple everythin by 10^6)
   Total_FPKMS_divided<-Total_FPKMS/1000000
@@ -62,13 +65,12 @@ FPKM_to_TPM <- function(TheFilename){
   
   TheFilename<-gsub("FPKMS","",TheFilename)
   
-  # SaveAsAFILE
+  #SaveAsAFILE
   write.table(FPKMExtract,file=paste0(MyTPMDirectory,TheFilename),
               row.names = FALSE,
               col.names =FALSE,
               sep="\t")
 }
-#ENF OF FUNCTION
 
 #Look for the files in your FPKM Directory and remove the .txt (Change .txt if you have under another extension)
 MyFPKMsNames<-list.files(path = MyFPKMDirectory)
@@ -107,27 +109,29 @@ MakeaMerge<-function(TheComparison){
           fileContent = fileContent[order(fileContent[,1]),]
           MergedTPM<-cbind(as.data.frame(MergedTPM),as.data.frame(fileContent[,2]))
           }
-      #Replace col names by sample name
-      colnames(MergedTPM)<-listofnames  
+     #Replace col names by sample name
+     colnames(MergedTPM)<-listofnames  
   
-      ###Add the gene symbol/names from the ENSEMBLE ID
-          load("./Rdas/Mus_musculus.GRCm38.82.Rda")
-          # Calculate the number of cores
-          no_cores <- detectCores() - 1
-          # Initiate cluster
-          cl <- makeCluster(no_cores)
-          #levelsList = character(length(ensNames))
-          levelsList = parallel::parLapply(cl,MergedTPM$gene.ids, function(x){
-                return(geneid2name[geneid2name$gene_id == as.character(x),]$gene_name)
-                })
-          stopCluster(cl)    
-          #Add the newly formed gene2idname key to the mergedTPM  
-          MergedTPM<-  merge(geneid2name[, c("gene_id", "gene_name")],MergedTPM , by="gene_id")
-      ###Returns:
-          return(MergedTPM)
+     #Add the gene symbol/names from the ENSEMBLE ID
+     load("./Rdas/Homo_sapiens.GRCh38.84.Rda")
+     #Calculate the number of cores
+     no_cores <- detectCores() - 1
+     #Initiate cluster
+     cl <- makeCluster(no_cores)
+     #levelsList = character(length(ensNames))
+     levelsList = parallel::parLapply(cl,MergedTPM$gene.ids, function(x){
+            return(geneid2name[geneid2name$gene_id == as.character(x),]$gene_name)
+            })
+     stopCluster(cl)    
+     
+     #Add the newly formed gene2idname key to the mergedTPM  
+     MergedTPM<-  merge(geneid2name[, c("gene_id", "gene_name")],MergedTPM , by="gene_id")
+     
+     #Returns:
+     return(MergedTPM)
           
 }
-#Loop throughout Our comparisons
+#Loop throughout our comparisons
 for (i in Comparisons){
   LoopingMerge<-MakeaMerge(i)
   assign(paste0(i,"_Merged"),LoopingMerge)
@@ -150,7 +154,9 @@ Add1AndLog2Transform<- function(TheComparison){
   
   #Log2
   MergedFile = cbind(TempMergedFile[,1:2],log(TempMergedFile[,!(names(TempMergedFile) %in% c("gene_id","gene_name"))],2))
-  return(MergedFile)}
+  return(MergedFile)
+  }
+
 #Loop throughout Our comparisons
 for (i in Comparisons){
   LoopTransfo<-Add1AndLog2Transform(i)
@@ -166,114 +172,110 @@ print("The outputs are dataframe Named TheComparison_MergedTransformed")
 ### 4. LOWEXPRESSION PLOTING  ################################################
 ############################################################################################
 
-#THREE PARTS
-    #1. Add average columns
-    #2. Plots
+#1 Add average columns
 
-#1. Add average columns
-     #FUNCTION
-     Add_Avg_Col_percondi <- function(mergedTPM,condition){
-              #Store colnames
-              columnames <- colnames(mergedTPM)
-              #Find column containing control CTRL
-              condition_columnname <- columnames[grep(condition,columnames)]
+#FUNCTION
+Add_Avg_Col_percondi <- function(mergedTPM,condition){
+  #Store colnames
+  columnames <- colnames(mergedTPM)
+  #Find column containing control CTRL
+  condition_columnname <- columnames[grep(condition,columnames)]
              
-              if(length(condition_columnname)==0) {
-              } else {
-                     #print(paste0("condition",condition,"found in the dataset",TheComparison))
-                     #Get only CTRL subsets of counts
-                     condition_columns <- mergedTPM[,condition_columnname]
-                     #calculaterow averages and insert into a new column
-                     mergedTPM$condition_Avg=rowMeans(condition_columns)
-                     #Change the name  of the newly added column to match the pattern
-                     colnames(mergedTPM)[colnames(mergedTPM) =="condition_Avg"]<-paste0(condition,"_avg")
-                     } 
-              return(mergedTPM) 
-              
-            }
+  if(length(condition_columnname)==0) {
+      } else {
+      #print(paste0("condition",condition,"found in the dataset",TheComparison))
+      #Get only CTRL subsets of counts
+      condition_columns <- mergedTPM[,condition_columnname]
+      #calculaterow averages and insert into a new column
+      mergedTPM$condition_Avg=rowMeans(condition_columns)
+      #Change the name  of the newly added column to match the pattern
+      colnames(mergedTPM)[colnames(mergedTPM) =="condition_Avg"]<-paste0(condition,"_avg")
+      } 
+  
+  return(mergedTPM) 
+  }
 
-     #Looping through the comparisona nd through the conditions to add a column of average at the end      
-     for (TheComparison in Comparisons){
-              mergedTPM<-get(paste0(TheComparison,"_MergedTransformed"))
-              for (condition in Conditions){
-                  mergedTPM<-Add_Avg_Col_percondi(mergedTPM,condition)
-                  } 
-              assign(paste0(TheComparison,"_Avg"),mergedTPM)
-     }
+  #Looping through the comparisona nd through the conditions to add a column of average at the end      
+  for (TheComparison in Comparisons){
+    mergedTPM<-get(paste0(TheComparison,"_MergedTransformed"))
+    for (condition in Conditions){
+        mergedTPM<-Add_Avg_Col_percondi(mergedTPM,condition)
+    } 
+    assign(paste0(TheComparison,"_Avg"),mergedTPM)
+  }
      
-     print("_Avg dataframe have been created")
+print("_Avg dataframe have been created")
      
 #2_ Generate the plots
-      #yvalues can bring that one outside if we want
-      yvalues<-c(10,50,100,1000)                
+      
+#yvalues can bring that one outside if we want
+yvalues<-c(10,50,100,1000)                
 
-      #FUNCTION 
-      lowexpressionplot<- function(mergedTPM){
-            #Create an directory to Store the Plots
-                dir.create(file.path("./2_LowExpressionPlots"), showWarnings = FALSE)
-                out_dir_Plotdata<-"./2_LowExpressionPlots/"
+#FUNCTION 
+lowexpressionplot<- function(mergedTPM){
+    #Create an directory to Store the Plots
+    dir.create(file.path("./2_LowExpressionPlots"), showWarnings = FALSE)
+    out_dir_Plotdata<-"./2_LowExpressionPlots/"
             
-            #Generating a new average df only df with NA instead of zero
-                #get only the columns that contain _avg
-                columnames<-colnames(mergedTPM)
-                avg_columnname <- columnames[grep("_avg",colnames(mergedTPM))]
-                #Generate a df with only the avg
-                mergedTPM_avg <- mergedTPM[,avg_columnname]
-                #Replacing 0 by NA (for ignoring during plotting)
-                mergedTPM_avg[mergedTPM_avg==0]<-NA
+    #Generating a new average df only df with NA instead of zero
+    #get only the columns that contain _avg
+    columnames<-colnames(mergedTPM)
+    avg_columnname <- columnames[grep("_avg",colnames(mergedTPM))]
+    #Generate a df with only the avg
+    mergedTPM_avg <- mergedTPM[,avg_columnname]
+    #Replacing 0 by NA (for ignoring during plotting)
+    mergedTPM_avg[mergedTPM_avg==0]<-NA
             
-            
-            # Plotting every column, into a new file with y valies of "yvalues"
-                for(i in 1:ncol(mergedTPM_avg)){
-                    #ranking the column
-                    namey<-sort(mergedTPM_avg[,i],na.last = TRUE)
-                    #saving the name for the plot
-                    plottitle<-avg_columnname[[i]]
+    #Plotting every column, into a new file with y valies of "yvalues"
+    for(i in 1:ncol(mergedTPM_avg)){
+         #ranking the column
+         namey<-sort(mergedTPM_avg[,i],na.last = TRUE)
+         #saving the name for the plot
+         plottitle<-avg_columnname[[i]]
 
-                    for (maxofy in yvalues){
-                         plotname<-paste0("plot_",plottitle,"_",maxofy)
-                         png(paste0(out_dir_Plotdata,plotname,".png"))
-                         print(
-                             ggplot(
-                                   mergedTPM_avg,
-                                   aes(x=rownames(mergedTPM_avg),
-                                   y=namey),
-                                   na.rm=TRUE)+
-                                   ggtitle(plotname)+
-                                   geom_point()+
-                                   ylim(0,maxofy)+
-                                   theme(axis.title.x=element_blank(),
-                                   axis.text.x=element_blank(),
-                                   axis.ticks.x=element_blank()))
-                         dev.off()
-                         }
-               }
+         for (maxofy in yvalues){
+             plotname<-paste0("plot_",plottitle,"_",maxofy)
+             png(paste0(out_dir_Plotdata,plotname,".png"))
+             print(ggplot(
+                       mergedTPM_avg,
+                       aes(x=rownames(mergedTPM_avg),
+                       y=namey),
+                       na.rm=TRUE)+
+                       ggtitle(plotname)+
+                       geom_point()+
+                       ylim(0,maxofy)+
+                       theme(axis.title.x=element_blank(),
+                       axis.text.x=element_blank(),
+                       axis.ticks.x=element_blank()))
+             dev.off()
+              }
+    }
 }
      
-       #Looping to generate the plots
-      for (TheComparison in Comparisons){
-            mergedTPM<-get(paste0(TheComparison,"_Avg"))
-            lowexpressionplot(mergedTPM)
-      }
+#Looping to generate the plots
+for (TheComparison in Comparisons){
+    mergedTPM<-get(paste0(TheComparison,"_Avg"))
+    lowexpressionplot(mergedTPM)
+}
       
       
       
-      print("Ignore the warnings.")
-      print("4. LOWEXPRESSION PLOTING: All Done")
-      print("The graphs are available in ./2_LowExpressionPlots")
+print("Ignore the warnings.")
+print("4. LOWEXPRESSION PLOTING: All Done")
+print("The graphs are available in ./2_LowExpressionPlots")
       
-      print("Do you want to keep a treshold of 1? Reminder: log2(1+1)=1")
+print("Do you want to keep a treshold of 1? Reminder: log2(1+1)=1")
        
 ############################################################################################
 ### 5. FILTERING   ###########################################################################
 ############################################################################################      
-      # fun <- function(){
-      #   treshold <- readline("What value do you want to use for treshold?Reminder: log2(1+1)=1")  
-      #   return(treshold)
-      # }
-      # if(interactive()) treshold<-fun()
-      # print(paste0("treshold has been set to ",treshold))
-      treshold =1
+# fun <- function(){
+#   treshold <- readline("What value do you want to use for treshold?Reminder: log2(1+1)=1")  
+#   return(treshold)
+# }
+# if(interactive()) treshold<-fun()
+# print(paste0("treshold has been set to ",treshold))
+treshold =1
 
 
 #FUNCTION : This function takes a comparison dataframe, look for what conditions amond the "Conditions"
@@ -283,71 +285,68 @@ print("The outputs are dataframe Named TheComparison_MergedTransformed")
           # List[1] the ON OFF genes 
           # List[2] the Filtered expressed in one condition genes 
 FilteringLowExpressAndONOFF<-function(TheComparison,Conditions,treshold){
-        MergedTPM<-get(paste0(TheComparison,"_MergedTransformed"))
-        NcolumnOriginal<-ncol(MergedTPM)
-        columnames<-colnames(MergedTPM)
+    MergedTPM<-get(paste0(TheComparison,"_MergedTransformed"))
+    NcolumnOriginal<-ncol(MergedTPM)
+    columnames<-colnames(MergedTPM)
 
-        #Find the list of SelectedConditions existing within the file that are withing our columnames
-        test<-as.data.frame(sapply(Conditions,function (y) sapply (columnames, function (x) grepl(y,x))))        
-        test<-rbind(test,colSums(test))
-        test<-test[nrow(test),]
-        SelectedConditions<-colnames(test[,test[1,]!=0])
+    #Find the list of SelectedConditions existing within the file that are withing our columnames
+    test<-as.data.frame(sapply(Conditions,function (y) sapply (columnames, function (x) grepl(y,x))))        
+    test<-rbind(test,colSums(test))
+    test<-test[nrow(test),]
+    SelectedConditions<-colnames(test[,test[1,]!=0])
         
-        #Create a column per condition that sum the percentage of condition being above treshold  
-        for (condition in SelectedConditions) {
-          #Get the columname matchig the condition
-          condition_columnname <- columnames[grep(condition,columnames)]
-          #Add a newcolumn with the percentage in each condition above your treshold here 5
-          MergedTPM$newcolumn<-
-            apply(as.data.frame(MergedTPM[, condition_columnname]), 
-                  MARGIN = 1, 
-                  function(x) (sum(x>treshold)/length(condition_columnname)))
-          colnames(MergedTPM)[colnames(MergedTPM) =="newcolumn"]<-paste0("testabove",treshold,"_",condition)
-        }
+    #Create a column per condition that sum the percentage of condition being above treshold  
+    for (condition in SelectedConditions) {
+      #Get the columname matchig the condition
+      condition_columnname <- columnames[grep(condition,columnames)]
+      #Add a newcolumn with the percentage in each condition above your treshold here 5
+      MergedTPM$newcolumn<-
+         apply(as.data.frame(MergedTPM[, condition_columnname]), 
+               MARGIN = 1, 
+               function(x) (sum(x>treshold)/length(condition_columnname)))
+      colnames(MergedTPM)[colnames(MergedTPM) =="newcolumn"]<-paste0("testabove",treshold,"_",condition)
+      }
         
+    #Make a new data frame with the Filter  
+    columnames2 <- colnames(MergedTPM)
+    testabove_columnname<-columnames2[grep("testabove",columnames2)]
         
+    #Only keep the rows where ANY have at least 50% above the treshold (remove categorya)
+    MergedTPM<-
+        MergedTPM[apply(MergedTPM[,testabove_columnname],MARGIN=1,function(x)any(x>0.50)),]
+    Ngeneswithatleast1<-nrow(MergedTPM)
         
-        
-        #Make a new data frame with the Filter  
-        columnames2 <- colnames(MergedTPM)
-        testabove_columnname<-columnames2[grep("testabove",columnames2)]
-        
-        #Only keep the rows where ANY have at least 50% above the treshold (remove categorya)
-        MergedTPM<-
-          MergedTPM[apply(MergedTPM[,testabove_columnname],MARGIN=1,function(x)any(x>0.50)),]
-        Ngeneswithatleast1<-nrow(MergedTPM)
-        
-        #Add a column per condition with the average
-        for(condition in SelectedConditions){
+    #Add a column per condition with the average
+    for(condition in SelectedConditions){
         MergedTPM<-Add_Avg_Col_percondi(MergedTPM,condition)
         }
         
-        #Getting names of avg columns
-        columnames2 <- colnames(MergedTPM)
-        avg_columnname<-columnames2[grep("avg",columnames2)]
+    #Getting names of avg columns
+    columnames2 <- colnames(MergedTPM)
+    avg_columnname<-columnames2[grep("avg",columnames2)]
         
-        #ISOLATING THE ON OFF GENES  
-        #Only keep the where ANY of the avg is 0 into a new data frame
-        MergedTPM_ONOFF<-
-          MergedTPM[apply(
+    #Isolating ON/OFF genes  
+    #Only keep the where ANY of the avg is 0 into a new data frame
+    MergedTPM_ONOFF<-
+        MergedTPM[apply(
             MergedTPM[,avg_columnname],
             MARGIN=1,
             function(x)any(x==0)),
             1:NcolumnOriginal]
-        NgenesONOFF<-nrow(MergedTPM_ONOFF)
+    NgenesONOFF<-nrow(MergedTPM_ONOFF)
         
-        #Remove  the onoff from the expressed genes (DE+ testable)
-        MergedTPM_Expressed<-
-          MergedTPM[apply(
+    #Remove  the onoff from the expressed genes (DE+ testable)
+    MergedTPM_Expressed<-
+        MergedTPM[apply(
             MergedTPM[,avg_columnname],
             MARGIN=1,
             function(x)!(any(x==0))),1:NcolumnOriginal]
-        NgenesExpressed<-nrow(MergedTPM_Expressed)
+    NgenesExpressed<-nrow(MergedTPM_Expressed)
         
-        #RETURN
-        #Make a list of the two dataframe of interest
-        my.list<-list("MergedTPM_ONOFF"=MergedTPM_ONOFF,"MergedTPM_Expressed"=MergedTPM_Expressed)
-        return(my.list)
+    #RETURN
+    #Make a list of the two dataframe of interest
+    my.list<-list("MergedTPM_ONOFF"=MergedTPM_ONOFF,"MergedTPM_Expressed"=MergedTPM_Expressed)
+    return(my.list)
 }
 
 
@@ -387,36 +386,36 @@ myexpressedirectory<-c("./3_Expressed/")
 
 #FUNCTION
 ExperimentalDesignFile<-function (TheComparison,Conditions) {
-      #Get the file we want to make an Exp Design FIle for 
-      MergedTPM <-get(paste0(TheComparison,"_Expressed"))
-      #Get the number of Sample
-      NSamples<-ncol(MergedTPM)-2
-      #Create the frame
-      ExpDsgn<- data.frame(matrix(ncol=3,nrow=NSamples))
-      #Name the columns
-      colnames(ExpDsgn)<-c("Array","ColumnName","Condition")
-      #Index the Array column
-      ExpDsgn$Array<-c(1:NSamples)
+    #Get the file we want to make an Exp Design FIle for 
+    MergedTPM <-get(paste0(TheComparison,"_Expressed"))
+    #Get the number of Sample
+    NSamples<-ncol(MergedTPM)-2
+    #Create the frame
+    ExpDsgn<- data.frame(matrix(ncol=3,nrow=NSamples))
+    #Name the columns
+    colnames(ExpDsgn)<-c("Array","ColumnName","Condition")
+    #Index the Array column
+    ExpDsgn$Array<-c(1:NSamples)
       
-      #Put the name of the column in the file   
-      SampleNames<-colnames(MergedTPM[,3:length(MergedTPM)])
-      ExpDsgn$ColumnName<-SampleNames
+    #Put the name of the column in the file   
+    SampleNames<-colnames(MergedTPM[,3:length(MergedTPM)])
+    ExpDsgn$ColumnName<-SampleNames
 
-      #Isolate which condition each column belongs to
-      for(rowloop in 1:NSamples){
-            #Figure which index of the Conditions is part of the name
-            index<-which(sapply(Conditions,function (y) sapply (ExpDsgn[rowloop,"ColumnName"], function (x) grepl(y,x))))       
-            #Put the corresponding Condition as "Condition" (==genotype)
-            ExpDsgn[rowloop,"Condition"]<-Conditions[index]
-      }
+    #Isolate which condition each column belongs to
+    for(rowloop in 1:NSamples){
+        #Figure which index of the Conditions is part of the name
+        index<-which(sapply(Conditions,function (y) sapply (ExpDsgn[rowloop,"ColumnName"], function (x) grepl(y,x))))       
+        #Put the corresponding Condition as "Condition" (==genotype)
+        ExpDsgn[rowloop,"Condition"]<-Conditions[index]
+    }
       
-      #Return
-      write.xlsx(ExpDsgn,paste0(myexpressedirectory,TheComparison,"_ExpDsgn.xlsx"))
+    #Return
+    write.xlsx(ExpDsgn,paste0(myexpressedirectory,TheComparison,"_ExpDsgn.xlsx"))
 }
 
 #Loop through the Comparison
 for (TheComparison in Comparisons){
-  ExperimentalDesignFile(TheComparison, Conditions)
+    ExperimentalDesignFile(TheComparison, Conditions)
 }
 
 
